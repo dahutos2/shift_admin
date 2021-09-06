@@ -1,0 +1,11 @@
+{% extends "shift/base.html" %}
+
+{% block main %}
+<div class="container">
+<h3>希望シフト一覧</h3>
+<hr>
+  {% include "shift/posts.html" %}
+  {% include "shift/pagination.html" %}
+</div>
+<p><a class="btn  btn-primary" href="{% url 'month_with_forms' %}">シフト提出</a>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "registration/base.html" %}
+{% block main %}
+{% load tag_library %}
+<h1>会員ページ</h1>
+<p><a>{{ user.full_name }}さん、こんにちは！</a>
+<a href="{% url 'user_update' user.id %}">編集</a></p>
+<table border="1" class="table table-striped">
+<tr>
+<th>希望シフト一覧(上位１０件)</th>
+<th><a href="{% url 'index_post'  %}">全て</a></th>
+</tr>
+{% for post in object_list|slice:":10" %}
+<tr>
+<td>{{ post.date|date:"Y/m/d" }}({{ post.date | date:"l"}})
+{{ post.get_start_time_display }}〜{{ post.get_end_time_display }}</td>
+  {% if post.published == True %}
+<td><a href="{% url 'detail' post.id %}">詳細</a></td>
+  {% else %}
+<td></td>
+  {% endif %}
+{% empty %}
+<td>希望シフトがありません</td><td></td>
+{% endfor %}
+</tr>
+</table>
+<p>
+<div class="btn-group">
+<p><a class="btn  btn-primary" href="{% url 'month_with_forms' %}">シフト提出</a>
+<a class="btn  btn-danger" href="{% url 'complite' %}">シフト完了</a>
+</div>
+{% if user.is_staff %}
+<p>
+<a href="/dahutos-admin/">管理画面へ</a>
+{% endif %}
+{% endblock %}

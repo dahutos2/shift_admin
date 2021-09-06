@@ -1,0 +1,99 @@
+{% load tag_library %}
+<html>
+    <head>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+      <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+      <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
+    </head>
+    <body>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-info">
+            <a class="navbar-brand" href="/dahutos-admin/">管理者画面</a>
+        </nav>
+        <table border="1" class="table table-striped">
+          {% if not range == '〜'　%}
+          <thead><h3>シフト期間</h3></thead>
+          <tr>
+            <th>{{ range }}</th>
+            </tr>
+          {% endif %}
+          </table>
+          <p>
+<form method="POST">
+  {% csrf_token %}
+  <div>
+      <label for="statdate">開始</label>
+      <input type="date" id="startdate" name="startdate" class="form-control" placeholder="年/月/日" >
+    </div>
+    <div>
+      <label for="enddate">終了</label>
+      <input type="date" id="enddate" name="enddate" class="form-control" placeholder="年/月/日" >
+    </div>
+    <p>
+    <input type="submit" class="btn btn-info btn-lg" value="検索">
+  </form>
+    <p>
+<table border="1" class="table table-striped">
+  <thead><h3>名前一覧</h3></thead>
+  <tr>
+    <th>名前</th>
+    <th>最終ログイン</th>
+    <th>作成日</th>
+   </tr>
+{% for object in object_list %}
+<tr>
+<td>{{ forloop.counter }}:<br>{{ object }}</td>
+<td><b>{{ object.last_login }}</b></td>
+<td><b>{{ object.date_joined }}</b></td>
+{% endfor %}
+</tr>
+</table>
+<p>
+<table border="2" class="table table-light">
+<thead><h3>シフト未完了者一覧</h3></thead>
+  <tr>
+  <th class="table-info">名前</th>
+  <th class="table-info">編集可</th>
+    </tr>
+{% for object in object_list %}
+  <tr>
+{% if  not object.related_user|date_filter:date_range|editable:"True" == 0 %}
+<td>{{ object }}</td>
+<td><b><font size='4'>{{ object.related_user|date_filter:date_range|editable:"True" }}</font></b></td>
+{% else %}
+
+{% endif %}
+{% endfor %}
+</tr>
+</table>
+<p>
+<h3>シフト未提出者一覧</h3>
+  <p>
+{% for object in object_list %}
+{% if object.related_user|date_filter:date_range|editable:"True" == 0 %}
+  {% if object.related_user|date_filter:date_range|editable:"False" == 0 %}
+<a>{{ object }}、</a>
+  {% else %}
+
+  {% endif %}
+ {% else %}
+
+{% endif %}
+{% endfor %}
+<p>
+<table border="1" class="table table-striped">
+  <thead><h3>シフト数一覧(直近3ヶ月)</h3></thead>
+  <tr>
+    <th>名前</th>
+    <th>編集可</th>
+    <th>編集不可</th>
+   </tr>
+{% for object in object_list %}
+<tr>
+<td>{{ forloop.counter }}、{{ object }}</td>
+<td><b><font size='4'>{{ object.related_user|three_months|editable:"True" }}</font></b></td>
+<td><b><font size='4'>{{ object.related_user|three_months|editable:"False" }}</font></b></td>
+{% endfor %}
+</tr>
+</table>

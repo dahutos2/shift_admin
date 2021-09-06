@@ -1,0 +1,11 @@
+{% extends "shift/base.html" %}
+
+{% block main %}
+<h2>編集</h2>
+<a>{{ object.date }}</a>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="更新" class="btn btn-primary" />
+</form>
+{% endblock %}
