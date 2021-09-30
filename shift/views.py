@@ -17,12 +17,13 @@ from django.utils.translation import ugettext_lazy as _
 import csv
 import io
 import urllib
-from .forms import CSVUploadForm
+from .forms import CSVUploadForm, BS4ScheduleForm
 
 class Index(ListView):
     # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="registration/index.html"
     model = Post
+    paginate_by = 5
 
     def get_queryset(self):
         query_set = Post.objects.filter(
@@ -66,11 +67,6 @@ class Mypage(ListView):
             return redirect('/dahutos-admin/')
         return super().get(request)
 
-    def get_queryset(self):
-        query_set = User.objects.order_by('-last_login')
-
-        return query_set
-
 class Complite(ListView):
     # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="shift/post_complite.html"
@@ -93,28 +89,25 @@ class UserUpdate(UpdateView):
             return HttpResponse('不正なアクセスです。')
         return super().get(request)
 
-class IndexPost(ListView):
+class IndexPost(mixins.MonthCalendarMixin, ListView):
     # 一覧するモデルを指定 -> `object_list`で取得可能
-    template_name="shift/post_list.html"
+    template_name="shift/index_post.html"
     model = Post
-    paginate_by = 10
 
-    def get_queryset(self):
-        query_set = Post.objects.filter(
-            name=self.request.user).order_by('-date')
-
-        return query_set
-
-# DetailViewは詳細を簡単に作るためのView
-class Detail(DetailView):
-    # 詳細表示するモデルを指定 -> `object`で取得可能
-    model = Post
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        month_calendar_context = self.get_month_calendar()
+        context.update(month_calendar_context)
+        month = self.kwargs.get('month')
+        year = self.kwargs.get('year')
+        day = self.kwargs.get('day')
+        if year:
+            context['date'] = datetime.date(year=int(year), month=int(month), day=int(day))
+        return context
 
     def get(self, request, **kwargs):
-        if not Post.objects.get(id=self.kwargs['pk']).name==request.user:
-            return HttpResponse('不正なアクセスです。')
-        if not Post.objects.get(id=self.kwargs['pk']).published:
-            return HttpResponse('不正なアクセスです。')
+        if not request.user.is_authenticated:
+            return redirect('/')
         return super().get(request)
 
 class Update(UpdateView):
@@ -215,14 +208,27 @@ class ShiftImport(generic.FormView):
                 continue
             else:
                 if User.objects.filter(username=row[4]).exists():
-                    if  not Shift.objects.filter(time=row[1],
-                                 time_range=row[2],
-                                 date=row[3],
+                    start_time = row[2].split('〜')[0]
+                    end_time = row[2].split('〜')[1]
+                    end_time_min = int(end_time.split(':')[0])*60+int(end_time.split(':')[1])
+                    start_time_min = int(start_time.split(':')[0])*60+int(start_time.split(':')[1])
+                    time_min_old = end_time_min - start_time_min
+                    time_min = int(time_min_old - float(row[1])*60)
+                    time = datetime.time(hour=time_min//60,minute=time_min%60)
+                    if int(end_time.split(':')[0]) >= 24:
+                        end_time = (str(int(end_time.split(':')[0])-24)
+                                    + ':' + end_time.split(':')[1])
+                    date=row[3]
+                    if not Shift.objects.filter(time=time,
+                                 start_time=start_time,
+                                 end_time=end_time,
+                                 date=date,
                                  name=User.objects.get(username=row[4])
                                  ).exists():
-                                 Shift.objects.create(time=row[1],
-                                    time_range=row[2],
-                                    date=row[3],
+                                 Shift.objects.create(time=time,
+                                    start_time=start_time,
+                                    end_time=end_time,
+                                    date=date,
                                     name=User.objects.get(username=row[4])
                                     )
         return super().form_valid(form)
@@ -232,9 +238,25 @@ class ShiftImport(generic.FormView):
             return redirect('/dahutos-admin/')
         return super().get(request)
 
-class ShiftView(mixins.MonthCalendarMixin,ListView):
+class ShiftView(mixins.MonthCalendarMixin, ListView):
     template_name = 'shift/shift.html'
     model = Shift
+
+    def get(self, request, **kwargs):
+        month = self.kwargs.get('month')
+        year = self.kwargs.get('year')
+        day = self.kwargs.get('day')
+        if year:
+            date = datetime.date(year=int(year), month=int(month), day=int(day))
+            if Shift.objects.filter(date=date,name=request.user).exists():
+                        objects = Shift.objects.filter(date=date,name=request.user)
+                        pk = [object.id for object in objects][0]
+                        return redirect('/shift/update/{}'.format(pk))
+
+        if not request.user.is_authenticated:
+            return redirect('/')
+        return super().get(request)
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -246,3 +268,72 @@ class ShiftView(mixins.MonthCalendarMixin,ListView):
         if year:
             context['date'] = datetime.date(year=int(year), month=int(month), day=int(day))
         return context
+
+class ShiftUpdate(mixins.MonthCalendarMixin, UpdateView):
+    template_name = 'shift/shift_form.html'
+    model = Shift
+    form_class = BS4ScheduleForm
+    success_url = "/shift/"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        month_calendar_context = self.get_month_calendar()
+        context.update(month_calendar_context)
+        month = self.kwargs.get('month')
+        year = self.kwargs.get('year')
+        day = self.kwargs.get('day')
+        if year:
+            context['date'] = datetime.date(year=int(year), month=int(month), day=int(day))
+        context['night_time'] = datetime.time(hour=5)
+        return context
+
+    def get(self, request, **kwargs):
+        if not Shift.objects.get(id=self.kwargs['pk']).name==request.user:
+            return HttpResponse('不正なアクセスです。')
+        return super().get(request)
+
+class ShiftIndex(ListView):
+        # 一覧するモデルを指定 -> `object_list`で取得可能
+    model = Shift
+    template_name="shift/shift_index.html"
+    paginate_by = 5
+
+    def get_queryset(self):
+        query_set = Shift.objects.filter(
+            name=self.request.user).order_by('-date')
+
+        return query_set
+
+    def post(self, request, *args, **kwargs):
+        form_value = [
+            self.request.POST.get('startdate', None),
+            self.request.POST.get('enddate', None),
+        ]
+        request.session['form_value'] = form_value
+
+        return self.get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        startdate = ''
+        enddate = ''
+        if 'form_value' in self.request.session:
+            form_value = self.request.session['form_value']
+            startdate = form_value[0]
+            enddate = form_value[1]
+        default_data = {'startdate': startdate,
+                        'enddate': enddate,
+                        }
+        test_form = SearchForm(initial=default_data) # 検索フォーム
+        context['test_form'] = test_form
+        context['date_range'] = ','.join([startdate,enddate])
+        context['range'] = '〜'.join([startdate,enddate])
+        context['objects'] = Shift.objects.filter(
+            name=self.request.user).order_by('-date')
+
+        return context
+
+    def get(self, request, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('/')
+        return super().get(request)

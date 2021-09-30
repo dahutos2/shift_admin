@@ -1,6 +1,7 @@
 import datetime
 import calendar
 from collections import deque
+from .models import Shift
 
 
 class BaseCalendarMixin:
@@ -49,6 +50,8 @@ class MonthCalendarMixin(BaseCalendarMixin):
         year = self.kwargs.get('year')
         if month and year:
             month = datetime.date(year=int(year), month=int(month), day=1)
+        elif Shift.objects.filter(pk=self.kwargs.get('pk')).exists():
+            month = Shift.objects.get(pk=self.kwargs.get('pk')).date
         else:
             month = datetime.date.today().replace(day=1)
         return month
@@ -95,12 +98,6 @@ class MonthWithFormsMixin(MonthCalendarMixin):
         for empty_form, (date, empty_list) in zip(formset.extra_forms, day_forms.items()):
             empty_form.initial = {self.date_field: date}
             empty_list.append(empty_form)
-
-        # スケジュールがある各日に、そのスケジュールの更新用フォームを配置
-        #for bound_form in formset.initial_forms:
-         #   instance = bound_form.instance
-          #  date = getattr(instance, self.date_field)
-            #day_forms[date].append(bound_form)
 
         # day_forms辞書を、周毎に分割する。[{1日: 1日のフォーム...}, {8日: 8日のフォーム...}, ...]
         # 7個ずつ取り出して分割しています。

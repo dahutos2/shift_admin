@@ -32,6 +32,7 @@
        <div class="navbar-nav">
          <a class="nav-item nav-link" href="{% url 'index_post'  %}">希望シフト一覧</a>
          <a class="nav-item nav-link" href="{% url 'shift'  %}">完成シフト一覧</a>
+         <a class="nav-item nav-link" href="{% url 'shift_index'  %}">完成シフト確認</a>
      <a class="nav-item nav-link" href="{% url 'logout' %}"><font color="red">ログアウト</font></a>
     </div>
   </div>
@@ -102,6 +103,6 @@
     </table>
     {% csrf_token %}
     <div class="text-center">
-        <input type="submit" class="btn btn-primary btn-lg" width="200px" value="送信"/>
+        <input type="submit" class="btn btn-primary btn-lg" value="送信"/>
       </div>
 </form>
