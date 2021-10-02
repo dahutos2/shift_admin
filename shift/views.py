@@ -18,9 +18,9 @@ import csv
 import io
 import urllib
 from .forms import CSVUploadForm, BS4ScheduleForm
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 class Index(ListView):
-    # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="registration/index.html"
     model = Post
     paginate_by = 5
@@ -67,6 +67,18 @@ class Mypage(ListView):
             return redirect('/dahutos-admin/')
         return super().get(request)
 
+def paginate_queryset(request, queryset, count):
+
+    paginator = Paginator(queryset, count)
+    page = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    return page_obj
+
 class UserShift(DetailView):
     template_name="admin/user_shift.html"
     model = User
@@ -80,10 +92,14 @@ class UserShift(DetailView):
 
         return self.get(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs,):
         context = super().get_context_data(**kwargs)
         startdate = ''
         enddate = ''
+        pk = self.kwargs.get('pk')
+        user = User.objects.get(pk=pk)
+        shift_objects = Shift.objects.filter(name=user).order_by('-date')
+        post_objects = Post.objects.filter(name=user).order_by('-date')
         if 'form_value' in self.request.session:
             form_value = self.request.session['form_value']
             startdate = form_value[0]
@@ -92,9 +108,13 @@ class UserShift(DetailView):
                         'enddate': enddate,
                         }
         test_form = SearchForm(initial=default_data) # 検索フォーム
+        page_shift_obj = paginate_queryset(self.request, shift_objects, 5)
+        page_post_obj = paginate_queryset(self.request, post_objects, 5)
         context['test_form'] = test_form
         context['date_range'] = ','.join([startdate,enddate])
         context['range']= '〜'.join([startdate,enddate])
+        context['page_shift_obj'] = page_shift_obj
+        context['page_post_obj'] = page_post_obj
 
         return context
 
@@ -104,7 +124,6 @@ class UserShift(DetailView):
         return super().get(request)
 
 class Complite(ListView):
-    # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="shift/post_complite.html"
     model = Post
 
@@ -126,7 +145,6 @@ class UserUpdate(UpdateView):
         return super().get(request)
 
 class IndexPost(mixins.MonthCalendarMixin, ListView):
-    # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="shift/index_post.html"
     model = Post
 
@@ -149,30 +167,30 @@ class IndexPost(mixins.MonthCalendarMixin, ListView):
 class Update(UpdateView):
     model = Post
     fields = ["start_time", "end_time",]
-    success_url = "/"
+    success_url = "/mypage/"
 
     def get(self, request, **kwargs):
-        if not Post.objects.get(id=self.kwargs['pk']).name==request.user:
-            return HttpResponse('不正なアクセスです。')
-        if not Post.objects.get(id=self.kwargs['pk']).published:
-            return HttpResponse('不正なアクセスです。')
+        if not request.user.is_superuser:
+            if not Post.objects.get(id=self.kwargs['pk']).name==request.user:
+                return HttpResponse('不正なアクセスです。')
+            if not Post.objects.get(id=self.kwargs['pk']).published:
+                return HttpResponse('不正なアクセスです。')
         return super().get(request)
 
 from django.views.generic.edit import DeleteView
 
 class Delete(DeleteView):
     model = Post
-    # 削除したあとに移動する先（トップページ）
-    success_url = "/"
+    success_url = "/mypage/"
 
     def get(self, request, **kwargs):
-        if not Post.objects.get(id=self.kwargs['pk']).name==request.user:
-            return HttpResponse('不正なアクセスです。')
-        if not Post.objects.get(id=self.kwargs['pk']).published:
-            return HttpResponse('不正なアクセスです。')
+        if not request.user.is_superuser:
+            if not Post.objects.get(id=self.kwargs['pk']).name==request.user:
+                return HttpResponse('不正なアクセスです。')
+            if not Post.objects.get(id=self.kwargs['pk']).published:
+                return HttpResponse('不正なアクセスです。')
         return super().get(request)
 
-# CreateViewは新規作成画面を簡単に作るためのView
 class MonthWithFormsCalendar(mixins.MonthWithFormsMixin, generic.View):
     """フォーム付きの月間カレンダーを表示するビュー"""
     template_name = 'shift/month_with_forms.html'
@@ -223,9 +241,7 @@ class SignUpView(CreateView):
     template_name = 'registration/signup.html'
 
 class ShiftImport(generic.FormView):
-    """
-    役職テーブルの登録(csvアップロード)
-    """
+
     template_name = 'admin/import.html'
     success_url = '/dahutos-admin/'
     form_class = CSVUploadForm
@@ -329,8 +345,16 @@ class ShiftUpdate(mixins.MonthCalendarMixin, UpdateView):
                 return HttpResponse('不正なアクセスです。')
         return super().get(request)
 
+class ShiftDelete(DeleteView):
+    model = Shift
+    success_url = "/mypage/"
+
+    def get(self, request, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponse('不正なアクセスです。')
+        return super().get(request)
+
 class ShiftIndex(ListView):
-        # 一覧するモデルを指定 -> `object_list`で取得可能
     model = Shift
     template_name="shift/shift_index.html"
     paginate_by = 5
