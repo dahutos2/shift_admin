@@ -67,6 +67,16 @@ class Mypage(ListView):
             return redirect('/dahutos-admin/')
         return super().get(request)
 
+class UserShift(DetailView):
+    template_name="admin/user_shift.html"
+    model = User
+
+    def get(self, request, **kwargs):
+        if not request.user.is_superuser:
+            return redirect('/dahutos-admin/')
+        return super().get(request)
+
+
 class Complite(ListView):
     # 一覧するモデルを指定 -> `object_list`で取得可能
     template_name="shift/post_complite.html"
@@ -288,8 +298,9 @@ class ShiftUpdate(mixins.MonthCalendarMixin, UpdateView):
         return context
 
     def get(self, request, **kwargs):
-        if not Shift.objects.get(id=self.kwargs['pk']).name==request.user:
-            return HttpResponse('不正なアクセスです。')
+        if not request.user.is_superuser:
+            if not Shift.objects.get(id=self.kwargs['pk']).name==request.user:
+                return HttpResponse('不正なアクセスです。')
         return super().get(request)
 
 class ShiftIndex(ListView):
