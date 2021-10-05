@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ["shift-admin-dahutos.herokuapp.com"]
 
 INSTALLED_APPS = [
     'shift',
+    'widget_tweaks',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

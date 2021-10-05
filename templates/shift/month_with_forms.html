@@ -2,6 +2,7 @@
 
 {% block main %}
 {% load tag_library %}
+{% load widget_tweaks %}
 <a href="{% url 'month_with_forms' month_previous.year month_previous.month  %}">前月</a>
 {{ month_current | date:"Y年m月" }}
 <a href="{% url 'month_with_forms' month_next.year month_next.month %}">次月</a>
@@ -99,8 +100,8 @@
                        {{ day.day }}</td>
                   {% endif %}
                       {% for field in forms %}
-                            <td>{{ field.start_time }}</td>
-                              <td>{{ field.end_time }}
+                            <td>{{ field.start_time|add_class:"form-control" }}</td>
+                              <td>{{ field.end_time|add_class:"form-control" }}
                               {{ field.date }}
                       {% endfor %}
                       </td>
