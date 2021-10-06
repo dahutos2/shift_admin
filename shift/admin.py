@@ -95,7 +95,7 @@ class PostAdmin(ExportMixin,admin.ModelAdmin):
     resource_class = PostResource
     #formats = [base_formats.CSV]
     def get_export_filename(self, request, queryset, file_format):
-        filename = "%s.%s" % ("jolly_data",
+        filename = "%s.%s" % ("work_data",
                               file_format.get_extension())
         return filename
 
